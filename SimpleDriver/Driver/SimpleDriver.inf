@@ -1,0 +1,38 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=Sample
+ClassGuid={B85B7C50-6A01-11D2-83A0-00105AEEE89A}
+Provider=%ManufacturerName%
+DriverVer=01/01/2024,1.0.0.0
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%DeviceName% = Install, Root\\SimpleDriver
+
+[Install]
+CopyFiles=DriverCopy
+AddReg=ServiceInstall
+
+[DriverCopy]
+SimpleDriver.sys
+
+[ServiceInstall]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,"SimpleDriver.sys"
+HKR,,EnumPropPages32,,"syssetup.dll,SetupPropPages"
+
+[SourceDisksFiles]
+SimpleDriver.sys = 1,,
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[Strings]
+ManufacturerName = "Example Manufacturer"
+DeviceName = "Simple Driver"
+DiskName = "Simple Driver Install Disk"
