@@ -1,0 +1,339 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/README.md b/README.md
+index 4c20d45347082942b03d401ace15468bf5ca52ec..475333bf78c4fc1d9e40234a9bbe1168661ddb40 100644
+--- a/README.md
++++ b/README.md
+@@ -1,2 +1,27 @@
+-# mouse
+-kernel
++# Simple WDM Driver Example
++
++This repository contains a minimal Windows Driver Model (WDM) driver project compatible with Visual Studio 2022 and WDK 10.
++
++## Contents
++
++- `SimpleDriver.sln` &mdash; Visual Studio solution file.
++- `Driver/` &mdash; Contains the driver project files.
++  - `SimpleDriver.vcxproj` &mdash; The project configuration.
++  - `Driver.c` &mdash; Driver source implementing `DriverEntry`, `DriverUnload`, and basic IRP handlers.
++  - `Driver.h` &mdash; Header defining custom IOCTL codes.
++  - `SimpleDriver.inf` &mdash; INF file for installation.
++
++## Building
++
++1. Open `SimpleDriver.sln` in Visual Studio 2022 with WDK 10 installed.
++2. Choose the desired configuration (`Debug` or `Release`) and build the solution.
++
++## Usage
++
++The driver creates a device named `\\Device\\SimpleDriver` with a symbolic link at `\\DosDevices\\SimpleDriver`.
++Two IOCTL codes are available:
++
++1. `IOCTL_MY_OPERATION` &ndash; placeholder operation.
++2. `IOCTL_SEND_MOUSE_INPUT` &ndash; accepts a `MOUSE_INPUT` structure from user mode and stores it for later processing.
++
++The `MOUSE_INPUT` structure contains X/Y movement and left/right button states.
+diff --git a/SimpleDriver/Driver/Driver.c b/SimpleDriver/Driver/Driver.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb2962bc28baa513f65afc636447d537abee0aff
+--- /dev/null
++++ b/SimpleDriver/Driver/Driver.c
+@@ -0,0 +1,136 @@
++#include <ntddk.h>
++#include "Driver.h"
++
++#define DEVICE_NAME L"\\Device\\SimpleDriver"
++#define SYMLINK_NAME L"\\DosDevices\\SimpleDriver"
++
++PDEVICE_OBJECT g_DeviceObject = NULL;
++MOUSE_INPUT g_LastInput = {0};
++
++NTSTATUS
++DriverCreateClose(
++    PDEVICE_OBJECT DeviceObject,
++    PIRP Irp
++    );
++
++NTSTATUS
++DriverDeviceControl(
++    PDEVICE_OBJECT DeviceObject,
++    PIRP Irp
++    );
++
++VOID
++DriverUnload(
++    PDRIVER_OBJECT DriverObject
++    );
++
++NTSTATUS
++DriverEntry(
++    PDRIVER_OBJECT DriverObject,
++    PUNICODE_STRING RegistryPath
++    )
++{
++    UNREFERENCED_PARAMETER(RegistryPath);
++    NTSTATUS status;
++    UNICODE_STRING deviceName;
++    UNICODE_STRING symLinkName;
++
++    RtlInitUnicodeString(&deviceName, DEVICE_NAME);
++    status = IoCreateDevice(
++        DriverObject,
++        0,
++        &deviceName,
++        FILE_DEVICE_UNKNOWN,
++        0,
++        FALSE,
++        &g_DeviceObject);
++
++    if (!NT_SUCCESS(status)) {
++        return status;
++    }
++
++    RtlInitUnicodeString(&symLinkName, SYMLINK_NAME);
++    status = IoCreateSymbolicLink(&symLinkName, &deviceName);
++    if (!NT_SUCCESS(status)) {
++        IoDeleteDevice(g_DeviceObject);
++        return status;
++    }
++
++    DriverObject->MajorFunction[IRP_MJ_CREATE] = DriverCreateClose;
++    DriverObject->MajorFunction[IRP_MJ_CLOSE] = DriverCreateClose;
++    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DriverDeviceControl;
++    DriverObject->DriverUnload = DriverUnload;
++
++    return STATUS_SUCCESS;
++}
++
++VOID
++DriverUnload(
++    PDRIVER_OBJECT DriverObject
++    )
++{
++    UNREFERENCED_PARAMETER(DriverObject);
++
++    UNICODE_STRING symLinkName;
++    RtlInitUnicodeString(&symLinkName, SYMLINK_NAME);
++    IoDeleteSymbolicLink(&symLinkName);
++
++    if (g_DeviceObject) {
++        IoDeleteDevice(g_DeviceObject);
++    }
++}
++
++NTSTATUS
++DriverCreateClose(
++    PDEVICE_OBJECT DeviceObject,
++    PIRP Irp
++    )
++{
++    UNREFERENCED_PARAMETER(DeviceObject);
++
++    Irp->IoStatus.Status = STATUS_SUCCESS;
++    Irp->IoStatus.Information = 0;
++    IoCompleteRequest(Irp, IO_NO_INCREMENT);
++    return STATUS_SUCCESS;
++}
++
++NTSTATUS
++DriverDeviceControl(
++    PDEVICE_OBJECT DeviceObject,
++    PIRP Irp
++    )
++{
++    UNREFERENCED_PARAMETER(DeviceObject);
++
++    PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
++    NTSTATUS status = STATUS_INVALID_DEVICE_REQUEST;
++    ULONG_PTR info = 0;
++
++    switch (stack->Parameters.DeviceIoControl.IoControlCode) {
++    case IOCTL_MY_OPERATION:
++        // Handle IOCTL here
++        status = STATUS_SUCCESS;
++        break;
++    case IOCTL_SEND_MOUSE_INPUT:
++        if (stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(MOUSE_INPUT)) {
++            status = STATUS_BUFFER_TOO_SMALL;
++            break;
++        }
++        {
++            PMOUSE_INPUT input = (PMOUSE_INPUT)Irp->AssociatedIrp.SystemBuffer;
++            g_LastInput = *input;
++            status = STATUS_SUCCESS;
++            info = sizeof(MOUSE_INPUT);
++        }
++        break;
++    default:
++        status = STATUS_INVALID_DEVICE_REQUEST;
++        break;
++    }
++
++    Irp->IoStatus.Status = status;
++    Irp->IoStatus.Information = info;
++    IoCompleteRequest(Irp, IO_NO_INCREMENT);
++    return status;
++}
++
+diff --git a/SimpleDriver/Driver/Driver.h b/SimpleDriver/Driver/Driver.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..c6a52b0a705897684a28042f4e53988972533a54
+--- /dev/null
++++ b/SimpleDriver/Driver/Driver.h
+@@ -0,0 +1,13 @@
++#pragma once
++
++// Custom IOCTLs
++#define IOCTL_MY_OPERATION       CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
++#define IOCTL_SEND_MOUSE_INPUT   CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
++
++// Structure describing mouse input data
++typedef struct _MOUSE_INPUT {
++    LONG XMovement;
++    LONG YMovement;
++    BOOLEAN LeftButton;
++    BOOLEAN RightButton;
++} MOUSE_INPUT, *PMOUSE_INPUT;
+diff --git a/SimpleDriver/Driver/SimpleDriver.inf b/SimpleDriver/Driver/SimpleDriver.inf
+new file mode 100644
+index 0000000000000000000000000000000000000000..2a74efaed8f8cb48bd8ba17e5850dd0579c49530
+--- /dev/null
++++ b/SimpleDriver/Driver/SimpleDriver.inf
+@@ -0,0 +1,38 @@
++[Version]
++Signature="$WINDOWS NT$"
++Class=Sample
++ClassGuid={B85B7C50-6A01-11D2-83A0-00105AEEE89A}
++Provider=%ManufacturerName%
++DriverVer=01/01/2024,1.0.0.0
++
++[DestinationDirs]
++DefaultDestDir = 12
++
++[Manufacturer]
++%ManufacturerName% = Standard,NT$ARCH$
++
++[Standard.NT$ARCH$]
++%DeviceName% = Install, Root\\SimpleDriver
++
++[Install]
++CopyFiles=DriverCopy
++AddReg=ServiceInstall
++
++[DriverCopy]
++SimpleDriver.sys
++
++[ServiceInstall]
++HKR,,DevLoader,,*ntkern
++HKR,,NTMPDriver,,"SimpleDriver.sys"
++HKR,,EnumPropPages32,,"syssetup.dll,SetupPropPages"
++
++[SourceDisksFiles]
++SimpleDriver.sys = 1,,
++
++[SourceDisksNames]
++1 = %DiskName%,,,
++
++[Strings]
++ManufacturerName = "Example Manufacturer"
++DeviceName = "Simple Driver"
++DiskName = "Simple Driver Install Disk"
+diff --git a/SimpleDriver/Driver/SimpleDriver.vcxproj b/SimpleDriver/Driver/SimpleDriver.vcxproj
+new file mode 100644
+index 0000000000000000000000000000000000000000..c2771b85234214cb55d7fe8e3443f13b0cc31be2
+--- /dev/null
++++ b/SimpleDriver/Driver/SimpleDriver.vcxproj
+@@ -0,0 +1,63 @@
++<?xml version="1.0" encoding="utf-8"?>
++<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <ItemGroup Label="ProjectConfigurations">
++    <ProjectConfiguration Include="Debug|Win32">
++      <Configuration>Debug</Configuration>
++      <Platform>Win32</Platform>
++    </ProjectConfiguration>
++    <ProjectConfiguration Include="Release|Win32">
++      <Configuration>Release</Configuration>
++      <Platform>Win32</Platform>
++    </ProjectConfiguration>
++  </ItemGroup>
++  <PropertyGroup Label="Globals">
++    <ProjectGuid>{983a5d1a-9031-421c-9c67-e44cb7eeae8c}</ProjectGuid>
++    <TargetName>SimpleDriver</TargetName>
++    <ConfigurationType>Driver</ConfigurationType>
++    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
++    <CharacterSet>Unicode</CharacterSet>
++  </PropertyGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
++    <ConfigurationType>Driver</ConfigurationType>
++    <UseDebugLibraries>true</UseDebugLibraries>
++    <DriverType>WDM</DriverType>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
++    <ConfigurationType>Driver</ConfigurationType>
++    <UseDebugLibraries>false</UseDebugLibraries>
++    <DriverType>WDM</DriverType>
++  </PropertyGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
++  <ImportGroup Label="ExtensionSettings" />
++  <ImportGroup Label="Shared" />
++  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++  </ImportGroup>
++  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++  </ImportGroup>
++  <PropertyGroup Label="UserMacros" />
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <ClCompile>
++      <PrecompiledHeader>NotUsing</PrecompiledHeader>
++    </ClCompile>
++    <Link>
++      <SubSystem>Native</SubSystem>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <ClCompile>
++      <PrecompiledHeader>NotUsing</PrecompiledHeader>
++    </ClCompile>
++    <Link>
++      <SubSystem>Native</SubSystem>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemGroup>
++    <ClInclude Include="Driver.h" />
++    <ClCompile Include="Driver.c" />
++    <None Include="SimpleDriver.inf" />
++  </ItemGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
++</Project>
+diff --git a/SimpleDriver/SimpleDriver.sln b/SimpleDriver/SimpleDriver.sln
+new file mode 100644
+index 0000000000000000000000000000000000000000..3efb6b858204174c6731be92364d27094ec8a524
+--- /dev/null
++++ b/SimpleDriver/SimpleDriver.sln
+@@ -0,0 +1,21 @@
++Microsoft Visual Studio Solution File, Format Version 12.00
++# Visual Studio Version 17
++VisualStudioVersion = 17.0.31912.275
++MinimumVisualStudioVersion = 10.0.40219.1
++Project("{88b0609c-f43e-489b-bfc5-acab9b2a6553}") = "SimpleDriver", "Driver\\SimpleDriver.vcxproj", "{983a5d1a-9031-421c-9c67-e44cb7eeae8c}"
++EndProject
++Global
++    GlobalSection(SolutionConfigurationPlatforms) = preSolution
++        Debug|Win32 = Debug|Win32
++        Release|Win32 = Release|Win32
++    EndGlobalSection
++    GlobalSection(ProjectConfigurationPlatforms) = postSolution
++        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Debug|Win32.ActiveCfg = Debug|Win32
++        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Debug|Win32.Build.0 = Debug|Win32
++        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.ActiveCfg = Release|Win32
++        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.Build.0 = Release|Win32
++    EndGlobalSection
++    GlobalSection(SolutionProperties) = preSolution
++        HideSolutionNode = FALSE
++    EndGlobalSection
++EndGlobal
+ 
+EOF
+)
