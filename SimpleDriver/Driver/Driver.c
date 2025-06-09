@@ -1,11 +1,11 @@
 #include <ntddk.h>
+#include "Driver.h"
 
 #define DEVICE_NAME L"\\Device\\SimpleDriver"
 #define SYMLINK_NAME L"\\DosDevices\\SimpleDriver"
 
-#define IOCTL_MY_OPERATION CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
 PDEVICE_OBJECT g_DeviceObject = NULL;
+MOUSE_INPUT g_LastInput = {0};
 
 NTSTATUS
 DriverCreateClose(
@@ -110,6 +110,18 @@ DriverDeviceControl(
     case IOCTL_MY_OPERATION:
         // Handle IOCTL here
         status = STATUS_SUCCESS;
+        break;
+    case IOCTL_SEND_MOUSE_INPUT:
+        if (stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(MOUSE_INPUT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        {
+            PMOUSE_INPUT input = (PMOUSE_INPUT)Irp->AssociatedIrp.SystemBuffer;
+            g_LastInput = *input;
+            status = STATUS_SUCCESS;
+            info = sizeof(MOUSE_INPUT);
+        }
         break;
     default:
         status = STATUS_INVALID_DEVICE_REQUEST;
