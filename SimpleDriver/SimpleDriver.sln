@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{88b0609c-f43e-489b-bfc5-acab9b2a6553}") = "SimpleDriver", "Driver\\SimpleDriver.vcxproj", "{983a5d1a-9031-421c-9c67-e44cb7eeae8c}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Win32 = Debug|Win32
+        Release|Win32 = Release|Win32
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Debug|Win32.ActiveCfg = Debug|Win32
+        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Debug|Win32.Build.0 = Debug|Win32
+        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.ActiveCfg = Release|Win32
+        {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.Build.0 = Release|Win32
+    EndGlobalSection
+    GlobalSection(SolutionProperties) = preSolution
+        HideSolutionNode = FALSE
+    EndGlobalSection
+EndGlobal
