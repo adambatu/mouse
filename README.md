@@ -18,4 +18,10 @@ This repository contains a minimal Windows Driver Model (WDM) driver project com
 
 ## Usage
 
-The driver creates a device named `\\Device\\SimpleDriver` with a symbolic link at `\\DosDevices\\SimpleDriver`. A custom IOCTL (`IOCTL_MY_OPERATION`) is handled in `DriverDeviceControl`.
+The driver creates a device named `\\Device\\SimpleDriver` with a symbolic link at `\\DosDevices\\SimpleDriver`.
+Two IOCTL codes are available:
+
+1. `IOCTL_MY_OPERATION` &ndash; placeholder operation.
+2. `IOCTL_SEND_MOUSE_INPUT` &ndash; accepts a `MOUSE_INPUT` structure from user mode and stores it for later processing.
+
+The `MOUSE_INPUT` structure contains X/Y movement and left/right button states.
