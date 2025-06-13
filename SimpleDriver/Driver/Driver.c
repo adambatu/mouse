@@ -7,6 +7,22 @@
 PDEVICE_OBJECT g_DeviceObject = NULL;
 MOUSE_INPUT g_LastInput = {0};
 
+typedef struct _INJECT_WORKITEM_CONTEXT {
+    MOUSE_INPUT Input;
+    PIO_WORKITEM WorkItem;
+} INJECT_WORKITEM_CONTEXT, *PINJECT_WORKITEM_CONTEXT;
+
+VOID
+InjectWorker(
+    _In_ PDEVICE_OBJECT DeviceObject,
+    _In_opt_ PVOID Context
+    );
+
+VOID
+QueueMouseInjection(
+    _In_ PMOUSE_INPUT Input
+    );
+
 NTSTATUS
 DriverCreateClose(
     PDEVICE_OBJECT DeviceObject,
@@ -119,6 +135,7 @@ DriverDeviceControl(
         {
             PMOUSE_INPUT input = (PMOUSE_INPUT)Irp->AssociatedIrp.SystemBuffer;
             g_LastInput = *input;
+            QueueMouseInjection(&g_LastInput);
             status = STATUS_SUCCESS;
             info = sizeof(MOUSE_INPUT);
         }
@@ -132,5 +149,54 @@ DriverDeviceControl(
     Irp->IoStatus.Information = info;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
     return status;
+}
+
+VOID
+InjectWorker(
+    _In_ PDEVICE_OBJECT DeviceObject,
+    _In_opt_ PVOID Context
+    )
+{
+    UNREFERENCED_PARAMETER(DeviceObject);
+
+    PINJECT_WORKITEM_CONTEXT ctx = (PINJECT_WORKITEM_CONTEXT)Context;
+    if (ctx) {
+        // Placeholder for real mouse injection using class driver APIs.
+        DbgPrint("[SimpleDriver] Injecting mouse: X=%ld Y=%ld L=%d R=%d\n",
+                ctx->Input.XMovement,
+                ctx->Input.YMovement,
+                ctx->Input.LeftButton,
+                ctx->Input.RightButton);
+
+        IoFreeWorkItem(ctx->WorkItem);
+        ExFreePool(ctx);
+    }
+}
+
+VOID
+QueueMouseInjection(
+    _In_ PMOUSE_INPUT Input
+    )
+{
+    if (!Input || !g_DeviceObject) {
+        return;
+    }
+
+    PINJECT_WORKITEM_CONTEXT ctx =
+        (PINJECT_WORKITEM_CONTEXT)ExAllocatePoolWithTag(NonPagedPoolNx,
+                                                       sizeof(INJECT_WORKITEM_CONTEXT),
+                                                       'mInj');
+    if (!ctx) {
+        return;
+    }
+
+    ctx->Input = *Input;
+    ctx->WorkItem = IoAllocateWorkItem(g_DeviceObject);
+    if (!ctx->WorkItem) {
+        ExFreePool(ctx);
+        return;
+    }
+
+    IoQueueWorkItem(ctx->WorkItem, InjectWorker, DelayedWorkQueue, ctx);
 }
 

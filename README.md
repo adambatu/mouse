@@ -23,9 +23,11 @@ The driver creates a device named `\\Device\\SimpleDriver` with a symbolic link 
 Two IOCTL codes are available:
 
 1. `IOCTL_MY_OPERATION` &ndash; placeholder operation.
-2. `IOCTL_SEND_MOUSE_INPUT` &ndash; accepts a `MOUSE_INPUT` structure from user mode and stores it for later processing.
+2. `IOCTL_SEND_MOUSE_INPUT` &ndash; accepts a `MOUSE_INPUT` structure from user mode. The driver queues the data for injection using a work item.
 
 The `MOUSE_INPUT` structure contains X/Y movement and left/right button states.
+The example driver logs the received values and queues a worker item that can be
+expanded to call internal class driver methods for real mouse movement.
 
 ### User-mode Example
 

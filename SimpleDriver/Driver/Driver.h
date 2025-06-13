@@ -11,3 +11,9 @@ typedef struct _MOUSE_INPUT {
     BOOLEAN LeftButton;
     BOOLEAN RightButton;
 } MOUSE_INPUT, *PMOUSE_INPUT;
+
+// Queue mouse input for injection
+VOID
+QueueMouseInjection(
+    _In_ PMOUSE_INPUT Input
+    );
