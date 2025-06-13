@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{88b0609c-f43e-489b-bfc5-acab9b2a6553}") = "SimpleDriver", "Driver\\SimpleDriver.vcxproj", "{983a5d1a-9031-421c-9c67-e44cb7eeae8c}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UserClient", "UserClient\\UserClient.vcxproj", "{fd54a588-3770-4175-ab0f-15f0b0c8a4d0}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|Win32 = Debug|Win32
@@ -14,6 +16,10 @@ Global
         {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Debug|Win32.Build.0 = Debug|Win32
         {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.ActiveCfg = Release|Win32
         {983a5d1a-9031-421c-9c67-e44cb7eeae8c}.Release|Win32.Build.0 = Release|Win32
+        {fd54a588-3770-4175-ab0f-15f0b0c8a4d0}.Debug|Win32.ActiveCfg = Debug|Win32
+        {fd54a588-3770-4175-ab0f-15f0b0c8a4d0}.Debug|Win32.Build.0 = Debug|Win32
+        {fd54a588-3770-4175-ab0f-15f0b0c8a4d0}.Release|Win32.ActiveCfg = Release|Win32
+        {fd54a588-3770-4175-ab0f-15f0b0c8a4d0}.Release|Win32.Build.0 = Release|Win32
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE

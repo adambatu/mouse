@@ -10,6 +10,7 @@ This repository contains a minimal Windows Driver Model (WDM) driver project com
   - `Driver.c` &mdash; Driver source implementing `DriverEntry`, `DriverUnload`, and basic IRP handlers.
   - `Driver.h` &mdash; Header defining custom IOCTL codes.
   - `SimpleDriver.inf` &mdash; INF file for installation.
+- `UserClient/` &mdash; Simple console application demonstrating how to send mouse input to the driver using the new IOCTL.
 
 ## Building
 
@@ -25,3 +26,10 @@ Two IOCTL codes are available:
 2. `IOCTL_SEND_MOUSE_INPUT` &ndash; accepts a `MOUSE_INPUT` structure from user mode and stores it for later processing.
 
 The `MOUSE_INPUT` structure contains X/Y movement and left/right button states.
+
+### User-mode Example
+
+The `UserClient` project builds a simple console application that opens the
+driver interface (`\\.\\SimpleDriver`) and sends a sample `MOUSE_INPUT`
+structure via `IOCTL_SEND_MOUSE_INPUT`. Run the executable from an elevated
+command prompt after loading the driver with OSR Loader.
